@@ -2,6 +2,7 @@ from __future__ import print_function
 import argparse
 
 parser = argparse.ArgumentParser(description="cmdArgs")
+
 parser.add_argument(
     "--output",
     type=str,

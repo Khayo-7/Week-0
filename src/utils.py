@@ -180,27 +180,6 @@ def get_tagged_users(df):
 
     return df["msg_content"].map(lambda x: re.findall(r"@U\w+", x))
 
-
-def convert_2_timestamp(column, data):
-
-    """
-    convert from unix time to readable timestamp
-        args: column: columns that needs to be converted to timestamp
-                data: data that has the specified column
-    """
-    if column in data.columns.values:
-        timestamp_ = []
-        for time_unix in data[column]:
-            if time_unix == 0:
-                timestamp_.append(0)
-            else:
-                a = datetime.datetime.fromtimestamp(float(time_unix))
-                timestamp_.append(a.strftime("%Y-%m-%d %H:%M:%S"))
-        return timestamp_
-    else:
-        print(f"{column} not in data")
-
-
 def map_userid_2_realname(user_profile: dict, comm_dict: dict, plot=False):
 
     """
@@ -256,7 +235,7 @@ def get_user_map(users):
     return userNamesById, userIdsByName
 
 
-def slack_parser(slack_data, channel_name):
+def slack_channel_parser(slack_data, channel_name):
 
     """
     parse slack data to extract useful informations from the slack json data
@@ -363,7 +342,22 @@ def slack_parser(slack_data, channel_name):
     return dfall
 
 
-def parse_slack_reaction(slack_data, channel_name):
+def slack_parser(slack_data):
+
+    '''
+    get all messages
+    '''
+    
+    df_reactions = []
+    for channel_name in slack_data.keys():
+
+        df_reaction = slack_channel_parser(slack_data, channel_name)
+        df_reactions.append(df_reaction)
+    
+    return pd.concat(df_reactions)
+
+
+def parse_slack_channel_reaction(slack_data, channel_name):
 
     """get reactions"""
 
@@ -392,13 +386,21 @@ def parse_slack_reaction(slack_data, channel_name):
     df_reaction["channel"] = channel_name
     return df_reaction
 
+def parse_slack_reaction(slack_data):
+
+    '''
+    get all reactions
+    '''
+
+    df_reactions = []
+    for channel_name in slack_data.keys():
+
+        df_reaction = parse_slack_channel_reaction(slack_data, channel_name)
+        df_reactions.append(df_reaction)
+    
+    return pd.concat(df_reactions)
 
 def get_community_participation(slack_data):
-
-    """
-    specify path to get json files
-
-    """
 
     comm_dict = {}
 
@@ -406,9 +408,38 @@ def get_community_participation(slack_data):
     # `i` should not be used inside the nested for loop
 
     for slk_data in slack_data.values():
-        for msg in slk_data[0]:
-            if "replies" in msg.keys():
-                for i in msg["replies"]:
-                    comm_dict[i["user"]] = comm_dict.get(i["user"], 0) + 1
+        for data in slk_data:
+            for msg in data:
+                if "replies" in msg.keys():
+                    for i in msg["replies"]:
+                        comm_dict[i["user"]] = comm_dict.get(i["user"], 0) + 1
 
     return comm_dict
+
+
+def convert_timestamp(time_unix):
+
+    """
+    convert from unix time to readable timestamp
+    """
+    
+    timestamp = datetime.datetime.fromtimestamp(float(time_unix))
+    return timestamp.strftime("%Y-%m-%d %H:%M:%S")
+  
+
+def convert_2_timestamp(df_column):
+
+    """
+    convert from unix time to readable timestamp
+        args: column: columns that needs to be converted to timestamp
+                data: data that has the specified column
+    """
+    
+    timestamp = []
+    for time_unix in df_column:
+        if time_unix == 0:
+            timestamp.append(0)
+        else:
+            timestamp.append(convert_timestamp(time_unix))
+    return timestamp
+  
